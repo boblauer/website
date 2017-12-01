@@ -33,8 +33,13 @@
   </p>
   <p>
     <div id="editor">
-      const people = [{ name: "Al", age: 15 }, { name: 'Jane', age: 30 }, { name: 'Walter', age: 20 }]; const totalAge = people.reduce((runningTotal,
-      person) => { return runningTotal + person.age; }, 0); console.log(totalAge);
+const people = [{ name: "Al", age: 15 }, { name: 'Jane', age: 30 }, { name: 'Walter', age: 20 }];
+
+const totalAge = people.reduce((runningTotal, person) => {
+  return runningTotal + person.age;
+}, 0);
+
+console.log(totalAge);
     </div>
     <button id="run">Run</button>
     <div id="output"></div>
@@ -43,6 +48,7 @@
     <script>
       var editor = ace.edit("editor");
       editor.setTheme("ace/theme/monokai");
+      editor.setShowPrintMargin(false);
       editor.getSession().setMode("ace/mode/javascript");
       editor.getSession().setTabSize(2);
       editor.getSession().setUseSoftTabs(true);
@@ -51,15 +57,44 @@
         const source = editor.getValue();
 
         const console = {
+          isFirstRun: true,
+          executingSource: '',
+          logs: [],
           log: function() {
-            const args = Array.prototype.slice.call(arguments);
-            document.getElementById('output').innerText += args.join(' ');
+            if (this.isFirstRun) {
+              this.isFirstRun = false;
+              this.executingSource = this.getExecutingSource();
+            }
+
+            const args = Array.prototype.slice.call(arguments).map((arg) => {
+              if (String(arg) === '[object Object]') {
+                try {
+                  arg = JSON.stringify(arg);
+                } catch (e) {
+                  // do nothing
+                }
+              }
+
+              return arg;
+            });
+
+            this.logs.push(args.join(' '));
+
+            this.render();
+          },
+          getExecutingSource: function() {
+            const text = editor.getSession().getValue();
+
+            return text.replace(/\n\n\/\* OUTPUT[\S\s]*/gmi, '');
+          },
+          render() {
+            const fullOutput = this.executingSource + '\n\n' + '/* OUTPUT:\n\n' + this.logs.join('\n') + '\n\n*/';
+            editor.getSession().setValue(fullOutput);
           }
         };
 
         const F = new Function('console', source);
         F(console);
-
       });
     </script>
   </p>
